@@ -1,0 +1,11 @@
+Command,Finished,Error,Burst Time in milliseconds,Turnaround Time in milliseconds,Waiting Time in milliseconds,Response Time in milliseconds
+fsdfg,No,Yes,3,1009,1006,1006
+ls,Yes,No,7,2022,2015,2015
+echo hello,Yes,No,3,2026,2023,2023
+echo world,Yes,No,7,3035,3028,3028
+ls,Yes,No,4,3039,3035,3035
+pwd,Yes,No,3,3043,3040,3040
+sleep 1,Yes,No,1007,4049,3042,0
+sleep 3,Yes,No,1006,4050,3044,1009
+sleep 2,Yes,No,1005,5052,4047,3043
+sleep 4,Yes,No,2986,6035,3049,2026

@@ -25,6 +25,7 @@ int main()
     p[7].command = "ls";
     p[8].command = "pwd";
     p[9].command = "sleep 2";
+    FCFS(p, 10);
     RoundRobin(p, 10, 1);
     return 0;
 }

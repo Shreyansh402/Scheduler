@@ -112,17 +112,17 @@ void FCFS(Process p[], int n)
             p[i].response_time = p[i].start_time - init_time;
             p[i].waiting_time = p[i].response_time;
             p[i].turnaround_time = p[i].completion_time - init_time;
-            if (WIFEXITED(status))
-            {
-                // Process completed successfully
-                p[i].finished = true;
-                p[i].error = false;
-            }
-            else
+            if (WEXITSTATUS(status))
             {
                 // Process did not complete successfully
                 p[i].error = true;
                 p[i].finished = false;
+            }
+            else
+            {
+                // Process completed successfully
+                p[i].finished = true;
+                p[i].error = false;
             }
 
             //<Command>|<Start Time of the context>|<End Time of the context>
