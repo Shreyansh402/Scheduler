@@ -149,6 +149,13 @@ void RoundRobin(Process p[], int n, int quantum)
     // Signal handler for SIGALRM
     signal(SIGALRM, handle_alarm);
 
+    // Setting the timer for the quantum milliseconds
+    struct itimerval timer;
+    timer.it_value.tv_sec = quantum / 1000;           // seconds
+    timer.it_value.tv_usec = (quantum % 1000) * 1000; // microseconds
+    timer.it_interval.tv_sec = 0;
+    timer.it_interval.tv_usec = 0;
+
     // Creating the CSV file
     FILE *f = fopen("result_offline_RR.csv", "w");
     fprintf(f, "Command,Finished,Error,Burst Time in milliseconds,Turnaround Time in milliseconds,Waiting Time in milliseconds,Response Time in milliseconds\n");
@@ -230,12 +237,17 @@ void RoundRobin(Process p[], int n, int quantum)
             }
 
             current_pid = p[i].pid;
-            alarm(quantum); // Setting the alarm for the quantum time
+
+            // Setting the timer
+            setitimer(ITIMER_REAL, &timer, NULL);
 
             // Waiting for the process to complete
             int status;
             waitpid(p[i].pid, &status, WUNTRACED);
-            alarm(0); // Disabling the alarm
+
+            // Disabling the timer
+            setitimer(ITIMER_REAL, &timer, NULL);
+
             current_pid = -1;
 
             clock_gettime(CLOCK_MONOTONIC, &time);

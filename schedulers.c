@@ -26,6 +26,6 @@ int main()
     p[8].command = "pwd";
     p[9].command = "sleep 2";
     FCFS(p, 10);
-    RoundRobin(p, 10, 1);
+    RoundRobin(p, 10, 1000);
     return 0;
 }
