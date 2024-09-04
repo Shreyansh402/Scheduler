@@ -1,0 +1,11 @@
+Command,Finished,Error,Burst Time in milliseconds,Turnaround Time in milliseconds,Waiting Time in milliseconds,Response Time in milliseconds
+fsdgs,No,Yes,1,506,505,505
+ls,Yes,No,2,1010,1008,1008
+echo hello,Yes,No,1,1011,1010,1010
+echo world,Yes,No,1,1517,1516,1516
+ls,Yes,No,1,1519,1518,1518
+pwd,Yes,No,1,1520,1519,1519
+echo Round Completed,Yes,No,1,1521,1520,1520
+./d.out,Yes,No,1905,7950,6045,1011
+./c.out,Yes,No,3782,9716,5934,506
+./b.out,Yes,No,9471,15167,5696,0

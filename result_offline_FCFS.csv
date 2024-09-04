@@ -1,11 +1,11 @@
 Command,Finished,Error,Burst Time in milliseconds,Turnaround Time in milliseconds,Waiting Time in milliseconds,Response Time in milliseconds
-sleep 1,Yes,No,1005,1005,0,0
-fsdfg,No,Yes,3,1009,1006,1006
-sleep 3,Yes,No,3010,4019,1009,1009
-ls,Yes,No,6,4025,4019,4019
-echo hello,Yes,No,4,4029,4025,4025
-sleep 4,Yes,No,4009,8038,4029,4029
-echo world,Yes,No,6,8044,8038,8038
-ls,Yes,No,4,8048,8044,8044
-pwd,Yes,No,3,8051,8048,8048
-sleep 2,Yes,No,2008,10060,8052,8052
+./b.out,Yes,No,9437,9437,0,0
+fsdgs,No,Yes,2,9439,9437,9437
+./c.out,Yes,No,3770,13209,9439,9439
+ls,Yes,No,2,13211,13209,13209
+echo hello,Yes,No,2,13213,13211,13211
+./d.out,Yes,No,1877,15090,13213,13213
+echo world,Yes,No,1,15091,15090,15090
+ls,Yes,No,2,15093,15091,15091
+pwd,Yes,No,1,15094,15093,15093
+echo Round Completed,Yes,No,2,15096,15094,15094

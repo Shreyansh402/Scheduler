@@ -26,7 +26,7 @@ typedef struct
     uint64_t turnaround_time;
     uint64_t waiting_time;
     uint64_t response_time;
-    u_int64_t burst_time;
+    uint64_t burst_time;
     pid_t pid;
     bool timeed;
     int process_id;
@@ -156,6 +156,12 @@ void RoundRobin(Process p[], int n, int quantum)
     timer.it_interval.tv_sec = 0;
     timer.it_interval.tv_usec = 0;
 
+    struct itimerval zero_timer;
+    zero_timer.it_value.tv_sec = 0;
+    zero_timer.it_value.tv_usec = 0;
+    zero_timer.it_interval.tv_sec = 0;
+    zero_timer.it_interval.tv_usec = 0;
+
     // Creating the CSV file
     FILE *f = fopen("result_offline_RR.csv", "w");
     fprintf(f, "Command,Finished,Error,Burst Time in milliseconds,Turnaround Time in milliseconds,Waiting Time in milliseconds,Response Time in milliseconds\n");
@@ -246,7 +252,7 @@ void RoundRobin(Process p[], int n, int quantum)
             waitpid(p[i].pid, &status, WUNTRACED);
 
             // Disabling the timer
-            setitimer(ITIMER_REAL, &timer, NULL);
+            setitimer(ITIMER_REAL, &zero_timer, NULL);
 
             current_pid = -1;
 
@@ -292,8 +298,33 @@ void MultiLevelFeedbackQueue(Process p[], int n, int quantum0, int quantum1, int
 {
     // Multi-Level Feedback Queue Scheduling Algorithm
 
-    // Signal handler for SIGALRM
+    // Set up signal handlers
     signal(SIGALRM, handle_alarm);
+
+    // Setting the timer for the quantum milliseconds
+    struct itimerval timer0;
+    timer0.it_value.tv_sec = quantum0 / 1000;           // seconds
+    timer0.it_value.tv_usec = (quantum0 % 1000) * 1000; // microseconds
+    timer0.it_interval.tv_sec = 0;
+    timer0.it_interval.tv_usec = 0;
+
+    struct itimerval timer1;
+    timer1.it_value.tv_sec = quantum1 / 1000;
+    timer1.it_value.tv_usec = (quantum1 % 1000) * 1000;
+    timer1.it_interval.tv_sec = 0;
+    timer1.it_interval.tv_usec = 0;
+
+    struct itimerval timer2;
+    timer2.it_value.tv_sec = quantum2 / 1000;
+    timer2.it_value.tv_usec = (quantum2 % 1000) * 1000;
+    timer2.it_interval.tv_sec = 0;
+    timer2.it_interval.tv_usec = 0;
+
+    struct itimerval zero_timer;
+    zero_timer.it_value.tv_sec = 0;
+    zero_timer.it_value.tv_usec = 0;
+    zero_timer.it_interval.tv_sec = 0;
+    zero_timer.it_interval.tv_usec = 0;
 
     // Creating the CSV file
     FILE *f = fopen("result_offline_MLFQ.csv", "w");
@@ -314,15 +345,376 @@ void MultiLevelFeedbackQueue(Process p[], int n, int quantum0, int quantum1, int
     }
 
     int finished_processes = 0;
+    int priority_count[3] = {0, n, 0};
 
     struct timespec time;
     clock_gettime(CLOCK_MONOTONIC, &time);
     // Initial time
     uint64_t init_time = time.tv_sec * 1000 + time.tv_nsec / 1000000;
+    uint64_t prev_boost_time = init_time;
 
     while (finished_processes < n)
     {
-    }
+        if (priority_count[0])
+        {
+            for (int i = 0; i < n; i++)
+            {
+                if (p[i].priority != 0 || p[i].finished || p[i].error)
+                {
+                    continue;
+                }
 
+                clock_gettime(CLOCK_MONOTONIC, &time);
+                p[i].start_time = time.tv_sec * 1000 + time.tv_nsec / 1000000;
+                if (prev_boost_time + boostTime < p[i].start_time)
+                {
+                    for (int j = 0; j < n; j++)
+                    {
+                        if (!p[j].error && !p[j].finished && p[j].priority != 0)
+                        {
+                            priority_count[p[j].priority--]--;
+                            priority_count[p[j].priority]++;
+                        }
+                    }
+                    prev_boost_time = p[i].start_time;
+                }
+                if (p[i].timeed == false)
+                {
+                    p[i].response_time = p[i].start_time - init_time;
+                    p[i].timeed = true;
+                    p[i].waiting_time = p[i].response_time;
+                }
+                else
+                {
+                    p[i].waiting_time += p[i].start_time - p[i].completion_time;
+                }
+
+                if (p[i].pid != -1)
+                {
+                    kill(p[i].pid, SIGCONT);
+                }
+                else
+                {
+                    pid_t pid = fork();
+                    if (pid == 0)
+                    {
+                        // tokenizing the command
+                        char *args[100];
+                        char *command_copy = strdup(p[i].command);
+                        char *token = strtok(command_copy, " ");
+                        int j = 0;
+                        while (token != NULL)
+                        {
+                            args[j++] = strdup(token);
+                            token = strtok(NULL, " ");
+                        }
+                        args[j] = NULL;
+                        free(command_copy);
+                        execvp(args[0], args);
+                        exit(1);
+                    }
+                    else if (pid > 0)
+                    {
+                        p[i].pid = pid;
+                    }
+                    else
+                    {
+                        printf("Error in forking the process\n");
+                    }
+                }
+
+                current_pid = p[i].pid;
+
+                // Setting the timer
+                setitimer(ITIMER_REAL, &timer0, NULL);
+
+                // Waiting for the process to complete
+                int status;
+                waitpid(p[i].pid, &status, WUNTRACED);
+
+                // Disabling the timer
+                setitimer(ITIMER_REAL, &zero_timer, NULL);
+
+                current_pid = -1;
+
+                clock_gettime(CLOCK_MONOTONIC, &time);
+                p[i].completion_time = time.tv_sec * 1000 + time.tv_nsec / 1000000;
+                p[i].burst_time += p[i].completion_time - p[i].start_time;
+                if (WIFSTOPPED(status))
+                {
+                    // Process stopped due to alarm
+                    priority_count[p[i].priority++]--;
+                    priority_count[p[i].priority]++;
+                }
+                else
+                {
+                    // Process completed successfully
+                    p[i].turnaround_time = p[i].completion_time - init_time;
+                    finished_processes++;
+                    priority_count[p[i].priority]--;
+                    if (WEXITSTATUS(status))
+                    {
+                        // Process did not complete successfully
+                        p[i].error = true;
+                        p[i].finished = false;
+                    }
+                    else
+                    {
+                        // Process completed successfully
+                        p[i].finished = true;
+                        p[i].error = false;
+                    }
+
+                    // Write in CSV file with finished and error as 'Yes' or 'No'
+                    FILE *f = fopen("result_offline_MLFQ.csv", "a");
+                    fprintf(f, "%s,%s,%s,%llu,%llu,%llu,%llu\n", p[i].command, p[i].finished ? "Yes" : "No", p[i].error ? "Yes" : "No", p[i].burst_time, p[i].turnaround_time, p[i].waiting_time, p[i].response_time);
+                    fclose(f);
+                }
+
+                //<Command>|<Start Time of the context>|<End Time of the context>
+                printf("%s|%llu|%llu\n", p[i].command, p[i].start_time - init_time, p[i].completion_time - init_time);
+            }
+            continue;
+        }
+        else if (priority_count[1])
+        {
+            for (int i = 0; i < n; i++)
+            {
+                if (p[i].priority != 1 || p[i].finished || p[i].error)
+                {
+                    continue;
+                }
+
+                clock_gettime(CLOCK_MONOTONIC, &time);
+                p[i].start_time = time.tv_sec * 1000 + time.tv_nsec / 1000000;
+                if (prev_boost_time + boostTime < p[i].start_time)
+                {
+                    for (int j = 0; j < n; j++)
+                    {
+                        if (!p[j].error && !p[j].finished && p[j].priority != 0)
+                        {
+                            priority_count[p[j].priority--]--;
+                            priority_count[p[j].priority]++;
+                        }
+                    }
+                    prev_boost_time = p[i].start_time;
+                }
+                if (p[i].timeed == false)
+                {
+                    p[i].response_time = p[i].start_time - init_time;
+                    p[i].timeed = true;
+                    p[i].waiting_time = p[i].response_time;
+                }
+                else
+                {
+                    p[i].waiting_time += p[i].start_time - p[i].completion_time;
+                }
+
+                if (p[i].pid != -1)
+                {
+                    kill(p[i].pid, SIGCONT);
+                }
+                else
+                {
+                    pid_t pid = fork();
+                    if (pid == 0)
+                    {
+                        // tokenizing the command
+                        char *args[100];
+                        char *command_copy = strdup(p[i].command);
+                        char *token = strtok(command_copy, " ");
+                        int j = 0;
+                        while (token != NULL)
+                        {
+                            args[j++] = strdup(token);
+                            token = strtok(NULL, " ");
+                        }
+                        args[j] = NULL;
+                        free(command_copy);
+                        execvp(args[0], args);
+                        exit(1);
+                    }
+                    else if (pid > 0)
+                    {
+                        p[i].pid = pid;
+                    }
+                    else
+                    {
+                        printf("Error in forking the process\n");
+                    }
+                }
+
+                current_pid = p[i].pid;
+
+                // Setting the timer
+                setitimer(ITIMER_REAL, &timer1, NULL);
+
+                // Waiting for the process to complete
+                int status;
+                waitpid(p[i].pid, &status, WUNTRACED);
+
+                // Disabling the timer
+                setitimer(ITIMER_REAL, &zero_timer, NULL);
+
+                current_pid = -1;
+
+                clock_gettime(CLOCK_MONOTONIC, &time);
+                p[i].completion_time = time.tv_sec * 1000 + time.tv_nsec / 1000000;
+                p[i].burst_time += p[i].completion_time - p[i].start_time;
+                if (WIFSTOPPED(status))
+                {
+                    // Process stopped due to alarm
+                    priority_count[p[i].priority++]--;
+                    priority_count[p[i].priority]++;
+                }
+                else
+                {
+                    // Process completed successfully
+                    p[i].turnaround_time = p[i].completion_time - init_time;
+                    finished_processes++;
+                    priority_count[p[i].priority]--;
+                    if (WEXITSTATUS(status))
+                    {
+                        // Process did not complete successfully
+                        p[i].error = true;
+                        p[i].finished = false;
+                    }
+                    else
+                    {
+                        // Process completed successfully
+                        p[i].finished = true;
+                        p[i].error = false;
+                    }
+
+                    // Write in CSV file with finished and error as 'Yes' or 'No'
+                    FILE *f = fopen("result_offline_MLFQ.csv", "a");
+                    fprintf(f, "%s,%s,%s,%llu,%llu,%llu,%llu\n", p[i].command, p[i].finished ? "Yes" : "No", p[i].error ? "Yes" : "No", p[i].burst_time, p[i].turnaround_time, p[i].waiting_time, p[i].response_time);
+                    fclose(f);
+                }
+
+                //<Command>|<Start Time of the context>|<End Time of the context>
+                printf("%s|%llu|%llu\n", p[i].command, p[i].start_time - init_time, p[i].completion_time - init_time);
+            }
+            continue;
+        }
+        else
+        {
+            for (int i = 0; i < n; i++)
+            {
+                if (p[i].priority != 2 || p[i].finished || p[i].error)
+                {
+                    continue;
+                }
+
+                clock_gettime(CLOCK_MONOTONIC, &time);
+                p[i].start_time = time.tv_sec * 1000 + time.tv_nsec / 1000000;
+                if (prev_boost_time + boostTime < p[i].start_time)
+                {
+                    for (int j = 0; j < n; j++)
+                    {
+                        if (!p[j].error && !p[j].finished && p[j].priority != 0)
+                        {
+                            priority_count[p[j].priority--]--;
+                            priority_count[p[j].priority]++;
+                        }
+                    }
+                    prev_boost_time = p[i].start_time;
+                }
+                if (p[i].timeed == false)
+                {
+                    p[i].response_time = p[i].start_time - init_time;
+                    p[i].timeed = true;
+                    p[i].waiting_time = p[i].response_time;
+                }
+                else
+                {
+                    p[i].waiting_time += p[i].start_time - p[i].completion_time;
+                }
+
+                if (p[i].pid != -1)
+                {
+                    kill(p[i].pid, SIGCONT);
+                }
+                else
+                {
+                    pid_t pid = fork();
+                    if (pid == 0)
+                    {
+                        // tokenizing the command
+                        char *args[100];
+                        char *command_copy = strdup(p[i].command);
+                        char *token = strtok(command_copy, " ");
+                        int j = 0;
+                        while (token != NULL)
+                        {
+                            args[j++] = strdup(token);
+                            token = strtok(NULL, " ");
+                        }
+                        args[j] = NULL;
+                        free(command_copy);
+                        execvp(args[0], args);
+                        exit(1);
+                    }
+                    else if (pid > 0)
+                    {
+                        p[i].pid = pid;
+                    }
+                    else
+                    {
+                        printf("Error in forking the process\n");
+                    }
+                }
+
+                current_pid = p[i].pid;
+
+                // Setting the timer
+                setitimer(ITIMER_REAL, &timer2, NULL);
+
+                // Waiting for the process to complete
+                int status;
+                waitpid(p[i].pid, &status, WUNTRACED);
+
+                // Disabling the timer
+                setitimer(ITIMER_REAL, &zero_timer, NULL);
+
+                current_pid = -1;
+
+                clock_gettime(CLOCK_MONOTONIC, &time);
+                p[i].completion_time = time.tv_sec * 1000 + time.tv_nsec / 1000000;
+                p[i].burst_time += p[i].completion_time - p[i].start_time;
+                if (WIFSTOPPED(status))
+                {
+                    // Process stopped due to alarm
+                }
+                else
+                {
+                    // Process completed successfully
+                    p[i].turnaround_time = p[i].completion_time - init_time;
+                    finished_processes++;
+                    priority_count[p[i].priority]--;
+                    if (WEXITSTATUS(status))
+                    {
+                        // Process did not complete successfully
+                        p[i].error = true;
+                        p[i].finished = false;
+                    }
+                    else
+                    {
+                        // Process completed successfully
+                        p[i].finished = true;
+                        p[i].error = false;
+                    }
+
+                    // Write in CSV file with finished and error as 'Yes' or 'No'
+                    FILE *f = fopen("result_offline_MLFQ.csv", "a");
+                    fprintf(f, "%s,%s,%s,%llu,%llu,%llu,%llu\n", p[i].command, p[i].finished ? "Yes" : "No", p[i].error ? "Yes" : "No", p[i].burst_time, p[i].turnaround_time, p[i].waiting_time, p[i].response_time);
+                    fclose(f);
+                }
+
+                //<Command>|<Start Time of the context>|<End Time of the context>
+                printf("%s|%llu|%llu\n", p[i].command, p[i].start_time - init_time, p[i].completion_time - init_time);
+            }
+        }
+    }
     return;
 }

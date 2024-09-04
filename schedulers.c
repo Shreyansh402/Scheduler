@@ -15,17 +15,18 @@
 int main()
 {
     Process p[10];
-    p[0].command = "sleep 1";
-    p[1].command = "fsdfg";
-    p[2].command = "sleep 3";
+    p[0].command = "./b.out";
+    p[1].command = "fsdgs";
+    p[2].command = "./c.out";
     p[3].command = "ls";
     p[4].command = "echo hello";
-    p[5].command = "sleep 4";
+    p[5].command = "./d.out";
     p[6].command = "echo world";
     p[7].command = "ls";
     p[8].command = "pwd";
-    p[9].command = "sleep 2";
+    p[9].command = "echo Round Completed";
     FCFS(p, 10);
-    RoundRobin(p, 10, 1000);
+    RoundRobin(p, 10, 100);
+    MultiLevelFeedbackQueue(p, 10, 100, 500, 1000, 5000);
     return 0;
 }
