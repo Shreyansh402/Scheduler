@@ -1,10 +1,19 @@
 Command,Finished,Error,Burst Time in milliseconds,Turnaround Time in milliseconds,Waiting Time in milliseconds,Response Time in milliseconds
+ls,Yes,No,2,2,0,0
+ls,Yes,No,1,2,1,1
+pwd,Yes,No,3,3,0,0
+pwd,Yes,No,1,1,0,0
 ls,Yes,No,3,3,0,0
-./bo,No,Yes,0,0,0,0
-./b.out,Yes,No,9477,9477,0,0
-lsls,No,Yes,3,3,0,0
+./d.out,Yes,No,1908,5958,4050,0
+./b.out,Yes,No,9574,14513,4939,0
+./c.out,Yes,No,3818,11265,7447,0
+./d.out,Yes,No,1911,1911,0,0
+cd ..,Yes,No,12,12,0,0
 ls,Yes,No,2,2,0,0
-sls,No,Yes,2,2,0,0
+cd .,Yes,No,5,5,0,0
+cd ..,Yes,No,5,5,0,0
+cd ../,Yes,No,4,4,0,0
+cd ./,Yes,No,5,5,0,0
+cd ..,Yes,No,5,5,0,0
 ls,Yes,No,2,2,0,0
-ls,Yes,No,1,3,2,2
-./b.out,Yes,No,9540,9551,11,0
+pwd,Yes,No,2,2,0,0

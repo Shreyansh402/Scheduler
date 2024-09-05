@@ -13,7 +13,8 @@
 #include <time.h>
 
 #define BUFFER_SIZE 1024
-#define MAX_COMMANDS 100
+#define MAX_COMMANDS 64
+#define HASH_MAP_SIZE 100
 
 typedef struct
 {
@@ -34,6 +35,19 @@ typedef struct
     int process_id;
 
 } Process;
+
+typedef struct HashMapEntry
+{
+    char *command;
+    uint64_t total_burst_time;
+    int count;
+    struct HashMapEntry *next;
+} HashMapEntry;
+
+typedef struct
+{
+    HashMapEntry *buckets[HASH_MAP_SIZE];
+} HashMap;
 
 // Function prototypes
 void ShortestJobFirst();
@@ -58,6 +72,66 @@ void setNonBlockingInput()
     fcntl(STDIN_FILENO, F_SETFL, flags | O_NONBLOCK);
 }
 
+// Hash function for the HashMap
+unsigned long hash(char *str)
+{
+    unsigned long hash = 5381;
+    int c;
+    while ((c = *str++))
+    {
+        hash = ((hash << 5) + hash) + c;
+    }
+    return hash % HASH_MAP_SIZE;
+}
+
+// Initialize the HashMap
+void initHashMap(HashMap *map)
+{
+    for (int i = 0; i < HASH_MAP_SIZE; i++)
+    {
+        map->buckets[i] = NULL;
+    }
+}
+
+// Insert an entry into the HashMap
+void insertHashMap(HashMap *map, char *command, uint64_t burst_time)
+{
+    unsigned long index = hash(command);
+    HashMapEntry *entry = map->buckets[index];
+    while (entry != NULL)
+    {
+        if (strcmp(entry->command, command) == 0)
+        {
+            entry->total_burst_time += burst_time;
+            entry->count++;
+            return;
+        }
+        entry = entry->next;
+    }
+    HashMapEntry *newEntry = (HashMapEntry *)malloc(sizeof(HashMapEntry));
+    newEntry->command = strdup(command);
+    newEntry->total_burst_time = burst_time;
+    newEntry->count = 1;
+    newEntry->next = map->buckets[index];
+    map->buckets[index] = newEntry;
+}
+
+// Get the average burst time for a command from the HashMap
+uint64_t getAverageBurstTime(HashMap *map, char *command)
+{
+    unsigned long index = hash(command);
+    HashMapEntry *entry = map->buckets[index];
+    while (entry != NULL)
+    {
+        if (strcmp(entry->command, command) == 0)
+        {
+            return entry->total_burst_time / entry->count;
+        }
+        entry = entry->next;
+    }
+    return 0;
+}
+
 // Function to split input into multiple commands
 int splitCommands(char *input, char *commands[])
 {
@@ -72,7 +146,7 @@ int splitCommands(char *input, char *commands[])
 }
 
 // Function to check for new input and add it to the array p
-bool checkForInput(Process *p, int *n, int *priority_count)
+bool checkForInput(Process *p, int *n, int *priority_count, HashMap *map, int quantum0, int quantum1, int quantum2)
 {
     char buffer[BUFFER_SIZE];
     ssize_t bytesRead = read(STDIN_FILENO, buffer, sizeof(buffer) - 1);
@@ -89,7 +163,6 @@ bool checkForInput(Process *p, int *n, int *priority_count)
             // Add new command to the array p
             Process newProcess;
             newProcess.command = strdup(commands[i]); // Duplicate the command string
-            newProcess.priority = 1;                  // Middle priority
             newProcess.process_id = *n + 1;
             newProcess.timeed = false;
             newProcess.waiting_time = 0;
@@ -100,9 +173,28 @@ bool checkForInput(Process *p, int *n, int *priority_count)
             newProcess.finished = false;
             newProcess.pid = -1;
 
+            // Set the priority of the process based on the average burst time
+            uint64_t avg_burst_time = getAverageBurstTime(map, newProcess.command);
+            if (avg_burst_time == 0)
+            {
+                newProcess.priority = 1;
+            }
+            else if (avg_burst_time <= quantum0)
+            {
+                newProcess.priority = 0;
+            }
+            else if (avg_burst_time <= quantum1)
+            {
+                newProcess.priority = 1;
+            }
+            else
+            {
+                newProcess.priority = 2;
+            }
+
             p[*n] = newProcess;
             (*n)++;
-            (priority_count[1])++;
+            (priority_count[newProcess.priority])++;
         }
         return true;
     }
@@ -150,8 +242,12 @@ void MultiLevelFeedbackQueue(int quantum0, int quantum1, int quantum2, int boost
     fclose(f);
 
     int priority_count[3] = {0, 0, 0};
-    Process *p = (Process *)malloc(60 * sizeof(Process));
+    Process *p = (Process *)malloc(MAX_COMMANDS * sizeof(Process));
     int n = 0;
+
+    // Initialize the HashMap
+    HashMap map;
+    initHashMap(&map);
 
     struct timespec time;
     clock_gettime(CLOCK_MONOTONIC, &time);
@@ -160,7 +256,7 @@ void MultiLevelFeedbackQueue(int quantum0, int quantum1, int quantum2, int boost
 
     while (1)
     {
-        checkForInput(p, &n, priority_count);
+        checkForInput(p, &n, priority_count, &map, quantum0, quantum1, quantum2);
         if (priority_count[0])
         {
             printf("Priority 0\n");
@@ -170,7 +266,7 @@ void MultiLevelFeedbackQueue(int quantum0, int quantum1, int quantum2, int boost
                 {
                     continue;
                 }
-                if (checkForInput(p, &n, priority_count))
+                if (checkForInput(p, &n, priority_count, &map, quantum0, quantum1, quantum2))
                 {
                     break;
                 }
@@ -274,6 +370,7 @@ void MultiLevelFeedbackQueue(int quantum0, int quantum1, int quantum2, int boost
                         // Process completed successfully
                         p[i].finished = true;
                         p[i].error = false;
+                        insertHashMap(&map, p[i].command, p[i].burst_time);
                     }
 
                     // Write in CSV file with finished and error as 'Yes' or 'No'
@@ -295,7 +392,7 @@ void MultiLevelFeedbackQueue(int quantum0, int quantum1, int quantum2, int boost
                 {
                     continue;
                 }
-                if (checkForInput(p, &n, priority_count))
+                if (checkForInput(p, &n, priority_count, &map, quantum0, quantum1, quantum2))
                 {
                     break;
                 }
@@ -399,6 +496,7 @@ void MultiLevelFeedbackQueue(int quantum0, int quantum1, int quantum2, int boost
                         // Process completed successfully
                         p[i].finished = true;
                         p[i].error = false;
+                        insertHashMap(&map, p[i].command, p[i].burst_time);
                     }
 
                     // Write in CSV file with finished and error as 'Yes' or 'No'
@@ -420,7 +518,7 @@ void MultiLevelFeedbackQueue(int quantum0, int quantum1, int quantum2, int boost
                 {
                     continue;
                 }
-                if (checkForInput(p, &n, priority_count))
+                if (checkForInput(p, &n, priority_count, &map, quantum0, quantum1, quantum2))
                 {
                     break;
                 }
@@ -522,6 +620,7 @@ void MultiLevelFeedbackQueue(int quantum0, int quantum1, int quantum2, int boost
                         // Process completed successfully
                         p[i].finished = true;
                         p[i].error = false;
+                        insertHashMap(&map, p[i].command, p[i].burst_time);
                     }
 
                     // Write in CSV file with finished and error as 'Yes' or 'No'
