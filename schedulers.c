@@ -10,7 +10,8 @@
 #include <signal.h>
 #include <sys/time.h>
 #include <stdbool.h>
-#include "offline_schedulers.h"
+// #include "offline_schedulers.h"
+#include "online_schedulers.h"
 
 int main()
 {
@@ -27,6 +28,9 @@ int main()
     p[9].command = "echo Round Completed";
     // FCFS(p, 10);
     // RoundRobin(p, 10, 100);
-    MultiLevelFeedbackQueue(p, 10, 100, 500, 1000, 5000);
+    // MultiLevelFeedbackQueue(p, 10, 100, 500, 1000, 5000);
+
+    MultiLevelFeedbackQueue(10, 500, 1000, 10000);
+
     return 0;
 }
