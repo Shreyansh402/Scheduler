@@ -1,11 +1,11 @@
 Command,Finished,Error,Burst Time in milliseconds,Turnaround Time in milliseconds,Waiting Time in milliseconds,Response Time in milliseconds
-./b.out,Yes,No,9437,9437,0,0
-fsdgs,No,Yes,2,9439,9437,9437
-./c.out,Yes,No,3770,13209,9439,9439
-ls,Yes,No,2,13211,13209,13209
-echo hello,Yes,No,2,13213,13211,13211
-./d.out,Yes,No,1877,15090,13213,13213
-echo world,Yes,No,1,15091,15090,15090
-ls,Yes,No,2,15093,15091,15091
-pwd,Yes,No,1,15094,15093,15093
-echo Round Completed,Yes,No,2,15096,15094,15094
+./b.out,Yes,No,9427,9427,0,0
+fsdgs,No,Yes,2,9429,9427,9427
+./c.out,Yes,No,3769,13198,9429,9429
+ls gewgwe,No,Yes,3,13201,13198,13198
+echo hello,Yes,No,2,13203,13201,13201
+./d.out,Yes,No,1881,15084,13203,13203
+echo world,Yes,No,2,15086,15084,15084
+ ,Yes,No,46,15132,15086,15086
+pwd,Yes,No,1,15133,15132,15132
+echo Round Completed,Yes,No,2,15135,15133,15133

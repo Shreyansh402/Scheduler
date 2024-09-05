@@ -372,8 +372,9 @@ void MultiLevelFeedbackQueue(Process p[], int n, int quantum0, int quantum1, int
                     {
                         if (!p[j].error && !p[j].finished && p[j].priority != 0)
                         {
-                            priority_count[p[j].priority--]--;
-                            priority_count[p[j].priority]++;
+                            priority_count[p[j].priority]--;
+                            p[j].priority = 0;
+                            priority_count[0]++;
                         }
                     }
                     prev_boost_time = p[i].start_time;
@@ -493,8 +494,9 @@ void MultiLevelFeedbackQueue(Process p[], int n, int quantum0, int quantum1, int
                     {
                         if (!p[j].error && !p[j].finished && p[j].priority != 0)
                         {
-                            priority_count[p[j].priority--]--;
-                            priority_count[p[j].priority]++;
+                            priority_count[p[j].priority]--;
+                            p[j].priority = 0;
+                            priority_count[0]++;
                         }
                     }
                     prev_boost_time = p[i].start_time;
@@ -614,8 +616,9 @@ void MultiLevelFeedbackQueue(Process p[], int n, int quantum0, int quantum1, int
                     {
                         if (!p[j].error && !p[j].finished && p[j].priority != 0)
                         {
-                            priority_count[p[j].priority--]--;
-                            priority_count[p[j].priority]++;
+                            priority_count[p[j].priority]--;
+                            p[j].priority = 0;
+                            priority_count[0]++;
                         }
                     }
                     prev_boost_time = p[i].start_time;

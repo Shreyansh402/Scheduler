@@ -18,11 +18,11 @@ int main()
     p[0].command = "./b.out";
     p[1].command = "fsdgs";
     p[2].command = "./c.out";
-    p[3].command = "ls";
+    p[3].command = "ls gewgwe";
     p[4].command = "echo hello";
     p[5].command = "./d.out";
     p[6].command = "echo world";
-    p[7].command = "ls";
+    p[7].command = " ";
     p[8].command = "pwd";
     p[9].command = "echo Round Completed";
     FCFS(p, 10);
