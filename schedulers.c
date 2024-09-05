@@ -21,12 +21,12 @@ int main()
     p[3].command = "ls gewgwe";
     p[4].command = "echo hello";
     p[5].command = "./d.out";
-    p[6].command = "echo world";
+    p[6].command = "cd ../";
     p[7].command = " ";
     p[8].command = "pwd";
     p[9].command = "echo Round Completed";
-    FCFS(p, 10);
-    RoundRobin(p, 10, 100);
+    // FCFS(p, 10);
+    // RoundRobin(p, 10, 100);
     MultiLevelFeedbackQueue(p, 10, 100, 500, 1000, 5000);
     return 0;
 }

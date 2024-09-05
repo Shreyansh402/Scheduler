@@ -340,12 +340,12 @@ void MultiLevelFeedbackQueue(Process p[], int n, int quantum0, int quantum1, int
         p[i].completion_time = 0;
         p[i].error = false;
         p[i].finished = false;
-        p[i].priority = 1;
+        p[i].priority = 0;
         p[i].pid = -1;
     }
 
     int finished_processes = 0;
-    int priority_count[3] = {0, n, 0};
+    int priority_count[3] = {n, 0, 0};
 
     struct timespec time;
     clock_gettime(CLOCK_MONOTONIC, &time);
