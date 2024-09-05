@@ -63,6 +63,132 @@ void handle_alarm(int sig)
     }
 }
 
+void processing(Process *p, int *n, int *finished_processes, int *priority_count, int priority, int quantum0, int quantum1, int quantum2, struct itimerval *timer, struct itimerval *zero_timer, uint64_t *prev_boost_time, uint64_t boostTime, uint64_t init_time)
+{
+    struct timespec time;
+    for (int i = 0; i < *n; i++)
+    {
+        if (p[i].priority != priority || p[i].finished || p[i].error)
+        {
+            continue;
+        }
+
+        clock_gettime(CLOCK_MONOTONIC, &time);
+        p[i].start_time = time.tv_sec * 1000 + time.tv_nsec / 1000000;
+        if (*prev_boost_time + boostTime < p[i].start_time)
+        {
+            for (int j = 0; j < *n; j++)
+            {
+                if (!p[j].error && !p[j].finished && p[j].priority != 0)
+                {
+                    priority_count[p[j].priority]--;
+                    p[j].priority = 0;
+                    priority_count[0]++;
+                }
+            }
+            *prev_boost_time = p[i].start_time;
+        }
+        if (p[i].timeed == false)
+        {
+            p[i].response_time = p[i].start_time - init_time;
+            p[i].timeed = true;
+            p[i].waiting_time = p[i].response_time;
+        }
+        else
+        {
+            p[i].waiting_time += p[i].start_time - p[i].completion_time;
+        }
+
+        if (p[i].pid != -1)
+        {
+            kill(p[i].pid, SIGCONT);
+        }
+        else
+        {
+            pid_t pid = fork();
+            if (pid == 0)
+            {
+                // tokenizing the command
+                char *args[100];
+                char *command_copy = strdup(p[i].command);
+                char *token = strtok(command_copy, " ");
+                int j = 0;
+                while (token != NULL)
+                {
+                    args[j++] = strdup(token);
+                    token = strtok(NULL, " ");
+                }
+                args[j] = NULL;
+                free(command_copy);
+                execvp(args[0], args);
+                exit(1);
+            }
+            else if (pid > 0)
+            {
+                p[i].pid = pid;
+            }
+            else
+            {
+                printf("Error in forking the process\n");
+            }
+        }
+
+        current_pid = p[i].pid;
+
+        // Setting the timer
+        setitimer(ITIMER_REAL, timer, NULL);
+
+        // Waiting for the process to complete
+        int status;
+        waitpid(p[i].pid, &status, WUNTRACED);
+
+        // Disabling the timer
+        setitimer(ITIMER_REAL, zero_timer, NULL);
+
+        current_pid = -1;
+
+        clock_gettime(CLOCK_MONOTONIC, &time);
+        p[i].completion_time = time.tv_sec * 1000 + time.tv_nsec / 1000000;
+        p[i].burst_time += p[i].completion_time - p[i].start_time;
+        if (WIFSTOPPED(status))
+        {
+            // Process stopped due to alarm
+            if (p[i].priority != 2)
+            {
+                priority_count[p[i].priority++]--;
+                priority_count[p[i].priority]++;
+            }
+        }
+        else
+        {
+            // Process completed successfully
+            p[i].turnaround_time = p[i].completion_time - init_time;
+            priority_count[p[i].priority]--;
+            finished_processes++;
+            if (WEXITSTATUS(status))
+            {
+                // Process did not complete successfully
+                p[i].error = true;
+                p[i].finished = false;
+            }
+            else
+            {
+                // Process completed successfully
+                p[i].finished = true;
+                p[i].error = false;
+            }
+
+            // Write in CSV file with finished and error as 'Yes' or 'No'
+            FILE *f = fopen("result_offline_MLFQ.csv", "a");
+            fprintf(f, "%s,%s,%s,%llu,%llu,%llu,%llu\n", p[i].command, p[i].finished ? "Yes" : "No", p[i].error ? "Yes" : "No", p[i].burst_time, p[i].turnaround_time, p[i].waiting_time, p[i].response_time);
+            fclose(f);
+        }
+
+        //<Command>|<Start Time of the context>|<End Time of the context>
+        printf("%s|%llu|%llu\n", p[i].command, p[i].start_time - init_time, p[i].completion_time - init_time);
+    }
+}
+
 void FCFS(Process p[], int n)
 {
     // First Come First Serve Scheduling Algorithm
@@ -357,366 +483,22 @@ void MultiLevelFeedbackQueue(Process p[], int n, int quantum0, int quantum1, int
     {
         if (priority_count[0])
         {
-            for (int i = 0; i < n; i++)
-            {
-                if (p[i].priority != 0 || p[i].finished || p[i].error)
-                {
-                    continue;
-                }
-
-                clock_gettime(CLOCK_MONOTONIC, &time);
-                p[i].start_time = time.tv_sec * 1000 + time.tv_nsec / 1000000;
-                if (prev_boost_time + boostTime < p[i].start_time)
-                {
-                    for (int j = 0; j < n; j++)
-                    {
-                        if (!p[j].error && !p[j].finished && p[j].priority != 0)
-                        {
-                            priority_count[p[j].priority]--;
-                            p[j].priority = 0;
-                            priority_count[0]++;
-                        }
-                    }
-                    prev_boost_time = p[i].start_time;
-                }
-                if (p[i].timeed == false)
-                {
-                    p[i].response_time = p[i].start_time - init_time;
-                    p[i].timeed = true;
-                    p[i].waiting_time = p[i].response_time;
-                }
-                else
-                {
-                    p[i].waiting_time += p[i].start_time - p[i].completion_time;
-                }
-
-                if (p[i].pid != -1)
-                {
-                    kill(p[i].pid, SIGCONT);
-                }
-                else
-                {
-                    pid_t pid = fork();
-                    if (pid == 0)
-                    {
-                        // tokenizing the command
-                        char *args[100];
-                        char *command_copy = strdup(p[i].command);
-                        char *token = strtok(command_copy, " ");
-                        int j = 0;
-                        while (token != NULL)
-                        {
-                            args[j++] = strdup(token);
-                            token = strtok(NULL, " ");
-                        }
-                        args[j] = NULL;
-                        free(command_copy);
-                        execvp(args[0], args);
-                        exit(1);
-                    }
-                    else if (pid > 0)
-                    {
-                        p[i].pid = pid;
-                    }
-                    else
-                    {
-                        printf("Error in forking the process\n");
-                    }
-                }
-
-                current_pid = p[i].pid;
-
-                // Setting the timer
-                setitimer(ITIMER_REAL, &timer0, NULL);
-
-                // Waiting for the process to complete
-                int status;
-                waitpid(p[i].pid, &status, WUNTRACED);
-
-                // Disabling the timer
-                setitimer(ITIMER_REAL, &zero_timer, NULL);
-
-                current_pid = -1;
-
-                clock_gettime(CLOCK_MONOTONIC, &time);
-                p[i].completion_time = time.tv_sec * 1000 + time.tv_nsec / 1000000;
-                p[i].burst_time += p[i].completion_time - p[i].start_time;
-                if (WIFSTOPPED(status))
-                {
-                    // Process stopped due to alarm
-                    priority_count[p[i].priority++]--;
-                    priority_count[p[i].priority]++;
-                }
-                else
-                {
-                    // Process completed successfully
-                    p[i].turnaround_time = p[i].completion_time - init_time;
-                    finished_processes++;
-                    priority_count[p[i].priority]--;
-                    if (WEXITSTATUS(status))
-                    {
-                        // Process did not complete successfully
-                        p[i].error = true;
-                        p[i].finished = false;
-                    }
-                    else
-                    {
-                        // Process completed successfully
-                        p[i].finished = true;
-                        p[i].error = false;
-                    }
-
-                    // Write in CSV file with finished and error as 'Yes' or 'No'
-                    FILE *f = fopen("result_offline_MLFQ.csv", "a");
-                    fprintf(f, "%s,%s,%s,%llu,%llu,%llu,%llu\n", p[i].command, p[i].finished ? "Yes" : "No", p[i].error ? "Yes" : "No", p[i].burst_time, p[i].turnaround_time, p[i].waiting_time, p[i].response_time);
-                    fclose(f);
-                }
-
-                //<Command>|<Start Time of the context>|<End Time of the context>
-                printf("%s|%llu|%llu\n", p[i].command, p[i].start_time - init_time, p[i].completion_time - init_time);
-            }
-            continue;
+            printf("Priority 0\n");
+            processing(p, &n, &finished_processes, priority_count, 0, quantum0, quantum1, quantum2, &timer0, &zero_timer, &prev_boost_time, boostTime, init_time);
         }
         else if (priority_count[1])
         {
-            for (int i = 0; i < n; i++)
-            {
-                if (p[i].priority != 1 || p[i].finished || p[i].error)
-                {
-                    continue;
-                }
-
-                clock_gettime(CLOCK_MONOTONIC, &time);
-                p[i].start_time = time.tv_sec * 1000 + time.tv_nsec / 1000000;
-                if (prev_boost_time + boostTime < p[i].start_time)
-                {
-                    for (int j = 0; j < n; j++)
-                    {
-                        if (!p[j].error && !p[j].finished && p[j].priority != 0)
-                        {
-                            priority_count[p[j].priority]--;
-                            p[j].priority = 0;
-                            priority_count[0]++;
-                        }
-                    }
-                    prev_boost_time = p[i].start_time;
-                }
-                if (p[i].timeed == false)
-                {
-                    p[i].response_time = p[i].start_time - init_time;
-                    p[i].timeed = true;
-                    p[i].waiting_time = p[i].response_time;
-                }
-                else
-                {
-                    p[i].waiting_time += p[i].start_time - p[i].completion_time;
-                }
-
-                if (p[i].pid != -1)
-                {
-                    kill(p[i].pid, SIGCONT);
-                }
-                else
-                {
-                    pid_t pid = fork();
-                    if (pid == 0)
-                    {
-                        // tokenizing the command
-                        char *args[100];
-                        char *command_copy = strdup(p[i].command);
-                        char *token = strtok(command_copy, " ");
-                        int j = 0;
-                        while (token != NULL)
-                        {
-                            args[j++] = strdup(token);
-                            token = strtok(NULL, " ");
-                        }
-                        args[j] = NULL;
-                        free(command_copy);
-                        execvp(args[0], args);
-                        exit(1);
-                    }
-                    else if (pid > 0)
-                    {
-                        p[i].pid = pid;
-                    }
-                    else
-                    {
-                        printf("Error in forking the process\n");
-                    }
-                }
-
-                current_pid = p[i].pid;
-
-                // Setting the timer
-                setitimer(ITIMER_REAL, &timer1, NULL);
-
-                // Waiting for the process to complete
-                int status;
-                waitpid(p[i].pid, &status, WUNTRACED);
-
-                // Disabling the timer
-                setitimer(ITIMER_REAL, &zero_timer, NULL);
-
-                current_pid = -1;
-
-                clock_gettime(CLOCK_MONOTONIC, &time);
-                p[i].completion_time = time.tv_sec * 1000 + time.tv_nsec / 1000000;
-                p[i].burst_time += p[i].completion_time - p[i].start_time;
-                if (WIFSTOPPED(status))
-                {
-                    // Process stopped due to alarm
-                    priority_count[p[i].priority++]--;
-                    priority_count[p[i].priority]++;
-                }
-                else
-                {
-                    // Process completed successfully
-                    p[i].turnaround_time = p[i].completion_time - init_time;
-                    finished_processes++;
-                    priority_count[p[i].priority]--;
-                    if (WEXITSTATUS(status))
-                    {
-                        // Process did not complete successfully
-                        p[i].error = true;
-                        p[i].finished = false;
-                    }
-                    else
-                    {
-                        // Process completed successfully
-                        p[i].finished = true;
-                        p[i].error = false;
-                    }
-
-                    // Write in CSV file with finished and error as 'Yes' or 'No'
-                    FILE *f = fopen("result_offline_MLFQ.csv", "a");
-                    fprintf(f, "%s,%s,%s,%llu,%llu,%llu,%llu\n", p[i].command, p[i].finished ? "Yes" : "No", p[i].error ? "Yes" : "No", p[i].burst_time, p[i].turnaround_time, p[i].waiting_time, p[i].response_time);
-                    fclose(f);
-                }
-
-                //<Command>|<Start Time of the context>|<End Time of the context>
-                printf("%s|%llu|%llu\n", p[i].command, p[i].start_time - init_time, p[i].completion_time - init_time);
-            }
-            continue;
+            printf("Priority 1\n");
+            processing(p, &n, &finished_processes, priority_count, 1, quantum0, quantum1, quantum2, &timer1, &zero_timer, &prev_boost_time, boostTime, init_time);
+        }
+        else if (priority_count[2])
+        {
+            printf("Priority 2\n");
+            processing(p, &n, &finished_processes, priority_count, 2, quantum0, quantum1, quantum2, &timer2, &zero_timer, &prev_boost_time, boostTime, init_time);
         }
         else
         {
-            for (int i = 0; i < n; i++)
-            {
-                if (p[i].priority != 2 || p[i].finished || p[i].error)
-                {
-                    continue;
-                }
-
-                clock_gettime(CLOCK_MONOTONIC, &time);
-                p[i].start_time = time.tv_sec * 1000 + time.tv_nsec / 1000000;
-                if (prev_boost_time + boostTime < p[i].start_time)
-                {
-                    for (int j = 0; j < n; j++)
-                    {
-                        if (!p[j].error && !p[j].finished && p[j].priority != 0)
-                        {
-                            priority_count[p[j].priority]--;
-                            p[j].priority = 0;
-                            priority_count[0]++;
-                        }
-                    }
-                    prev_boost_time = p[i].start_time;
-                }
-                if (p[i].timeed == false)
-                {
-                    p[i].response_time = p[i].start_time - init_time;
-                    p[i].timeed = true;
-                    p[i].waiting_time = p[i].response_time;
-                }
-                else
-                {
-                    p[i].waiting_time += p[i].start_time - p[i].completion_time;
-                }
-
-                if (p[i].pid != -1)
-                {
-                    kill(p[i].pid, SIGCONT);
-                }
-                else
-                {
-                    pid_t pid = fork();
-                    if (pid == 0)
-                    {
-                        // tokenizing the command
-                        char *args[100];
-                        char *command_copy = strdup(p[i].command);
-                        char *token = strtok(command_copy, " ");
-                        int j = 0;
-                        while (token != NULL)
-                        {
-                            args[j++] = strdup(token);
-                            token = strtok(NULL, " ");
-                        }
-                        args[j] = NULL;
-                        free(command_copy);
-                        execvp(args[0], args);
-                        exit(1);
-                    }
-                    else if (pid > 0)
-                    {
-                        p[i].pid = pid;
-                    }
-                    else
-                    {
-                        printf("Error in forking the process\n");
-                    }
-                }
-
-                current_pid = p[i].pid;
-
-                // Setting the timer
-                setitimer(ITIMER_REAL, &timer2, NULL);
-
-                // Waiting for the process to complete
-                int status;
-                waitpid(p[i].pid, &status, WUNTRACED);
-
-                // Disabling the timer
-                setitimer(ITIMER_REAL, &zero_timer, NULL);
-
-                current_pid = -1;
-
-                clock_gettime(CLOCK_MONOTONIC, &time);
-                p[i].completion_time = time.tv_sec * 1000 + time.tv_nsec / 1000000;
-                p[i].burst_time += p[i].completion_time - p[i].start_time;
-                if (WIFSTOPPED(status))
-                {
-                    // Process stopped due to alarm
-                }
-                else
-                {
-                    // Process completed successfully
-                    p[i].turnaround_time = p[i].completion_time - init_time;
-                    finished_processes++;
-                    priority_count[p[i].priority]--;
-                    if (WEXITSTATUS(status))
-                    {
-                        // Process did not complete successfully
-                        p[i].error = true;
-                        p[i].finished = false;
-                    }
-                    else
-                    {
-                        // Process completed successfully
-                        p[i].finished = true;
-                        p[i].error = false;
-                    }
-
-                    // Write in CSV file with finished and error as 'Yes' or 'No'
-                    FILE *f = fopen("result_offline_MLFQ.csv", "a");
-                    fprintf(f, "%s,%s,%s,%llu,%llu,%llu,%llu\n", p[i].command, p[i].finished ? "Yes" : "No", p[i].error ? "Yes" : "No", p[i].burst_time, p[i].turnaround_time, p[i].waiting_time, p[i].response_time);
-                    fclose(f);
-                }
-
-                //<Command>|<Start Time of the context>|<End Time of the context>
-                printf("%s|%llu|%llu\n", p[i].command, p[i].start_time - init_time, p[i].completion_time - init_time);
-            }
+            break;
         }
     }
     return;

@@ -30,7 +30,7 @@ int main()
     // RoundRobin(p, 10, 100);
     // MultiLevelFeedbackQueue(p, 10, 100, 500, 1000, 5000);
 
-    MultiLevelFeedbackQueue(10, 500, 1000, 10000);
+    // MultiLevelFeedbackQueue(10, 500, 1000, 10000);
 
     return 0;
 }

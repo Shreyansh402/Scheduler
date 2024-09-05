@@ -1,19 +1,33 @@
 Command,Finished,Error,Burst Time in milliseconds,Turnaround Time in milliseconds,Waiting Time in milliseconds,Response Time in milliseconds
 ls,Yes,No,2,2,0,0
-ls,Yes,No,1,2,1,1
+ls,Yes,No,2,2,0,0
+ls,Yes,No,2,2,0,0
 pwd,Yes,No,3,3,0,0
+pw,No,Yes,2,2,0,0
 pwd,Yes,No,1,1,0,0
+./b.out,Yes,No,9426,9426,0,0
+./b.out,Yes,No,9471,12997,3526,0
+./b.out,Yes,No,9462,14917,5455,1005
+./c.out,Yes,No,3807,4726,919,0
 ls,Yes,No,3,3,0,0
-./d.out,Yes,No,1908,5958,4050,0
-./b.out,Yes,No,9574,14513,4939,0
-./c.out,Yes,No,3818,11265,7447,0
-./d.out,Yes,No,1911,1911,0,0
-cd ..,Yes,No,12,12,0,0
-ls,Yes,No,2,2,0,0
-cd .,Yes,No,5,5,0,0
-cd ..,Yes,No,5,5,0,0
-cd ../,Yes,No,4,4,0,0
-cd ./,Yes,No,5,5,0,0
-cd ..,Yes,No,5,5,0,0
-ls,Yes,No,2,2,0,0
-pwd,Yes,No,2,2,0,0
+./d.out,Yes,No,1912,1915,3,0
+fsdgs,No,Yes,1,102,101,101
+ls gewgwe,No,Yes,3,211,208,208
+echo hello,Yes,No,3,214,211,211
+cd ../,Yes,No,6,323,317,317
+ ,Yes,No,11,335,324,324
+pwd,Yes,No,2,337,335,335
+echo Round Completed,Yes,No,1,338,337,337
+./d.out,Yes,No,2088,8456,6368,214
+./c.out,Yes,No,3812,10154,6342,103
+./b.out,Yes,No,9499,15429,5930,0
+fsdgs,No,Yes,1,106,105,105
+ls gewgwe,No,Yes,3,211,208,208
+echo hello,Yes,No,1,212,211,211
+cd ../,Yes,No,5,318,313,313
+ ,Yes,No,12,330,318,318
+pwd,Yes,No,2,332,330,330
+echo Round Completed,Yes,No,1,333,332,332
+./d.out,Yes,No,2199,8566,6367,212
+./c.out,Yes,No,3773,10226,6453,107
+./b.out,Yes,No,9463,15463,6000,0
