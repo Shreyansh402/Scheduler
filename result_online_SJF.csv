@@ -1,0 +1,16 @@
+Command,Finished,Error,Burst Time in milliseconds,Turnaround Time in milliseconds,Waiting Time in milliseconds,Response Time in milliseconds
+ls,Yes,No,2,2,0,0
+./b.out,Yes,No,9575,9575,0,0
+./b.out,Yes,No,9562,9562,0,0
+ls,Yes,No,2,2,0,0
+./c.out,Yes,No,3857,3859,2,2
+gsadg,No,Yes,1,3860,3859,3859
+./b.out,Yes,No,9556,13416,3860,3860
+gsadg,No,Yes,2,2,0,0
+ls,Yes,No,1,2,1,1
+pwd,Yes,No,3,3,0,0
+./b.out,Yes,No,9575,9575,0,0
+ls,Yes,No,2,2,0,0
+ls,Yes,No,2,4,2,2
+pwd,Yes,No,1,5,4,4
+./c.out,Yes,No,3824,3829,5,5

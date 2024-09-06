@@ -20,7 +20,7 @@ int main()
     p[1].command = "fsdgs";
     p[2].command = "./c.out";
     p[3].command = "ls gewgwe";
-    p[4].command = "echo hello";
+    p[4].command = "./e.out";
     p[5].command = "./d.out";
     p[6].command = "cd ../";
     p[7].command = " ";
@@ -31,6 +31,7 @@ int main()
     // MultiLevelFeedbackQueue(p, 10, 100, 500, 1000, 5000);
 
     // MultiLevelFeedbackQueue(10, 500, 1000, 10000);
+    ShortestJobFirst();
 
     return 0;
 }

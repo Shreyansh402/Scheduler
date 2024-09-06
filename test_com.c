@@ -6,7 +6,7 @@
 int main()
 {
     long long int a = 10;
-    for (long long int i = 0; i < 2000000000; i++)
+    for (long long int i = 0; i < 300000000; i++)
     {
         a++;
     }

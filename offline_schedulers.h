@@ -44,14 +44,6 @@ void MultiLevelFeedbackQueue(Process p[], int n, int quantum0, int quantum1, int
 // Entry No.: 2021MT10230
 // Implentation of Offline Scheduling Algorithms in C
 
-// Node structure for Multi-Level Feedback Queue and Round Robin
-// typedef struct Node
-// {
-//     Process *process;
-//     pid_t pid;
-//     struct Node *next;
-// } Node;
-
 pid_t current_pid;
 
 void handle_alarm(int sig)
