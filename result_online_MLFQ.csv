@@ -1,7 +1,15 @@
 Command,Finished,Error,Burst Time in milliseconds,Turnaround Time in milliseconds,Waiting Time in milliseconds,Response Time in milliseconds
-ls,Yes,No,2,2,0,0
-ls,Yes,No,2,2,0,0
-./c.out,Yes,No,3836,8872,5036,0
-agsdg,No,Yes,1,1,0,0
-./b.out,Yes,No,9558,15910,6352,0
-./b.out,Yes,No,9560,13905,4345,0
+echo jlsf,Yes,No,2,2,0,0
+cd gs,No,Yes,6,6,0,0
+gsag,No,Yes,1,1,0,0
+echo,Yes,No,2,2,0,0
+echo,Yes,No,1,1,0,0
+./b.out,Yes,No,9534,9535,1,0
+./c.out,Yes,No,3824,3824,0,0
+./b.out,Yes,No,9553,9553,0,0
+./e.out,Yes,No,288,288,0,0
+echo,Yes,No,2,2,0,0
+./b.out,Yes,No,9563,16892,7329,0
+./c.out,Yes,No,3829,14686,10857,2010
+./e.out,Yes,No,288,288,0,0
+./b.out,Yes,No,9602,21063,11461,1005

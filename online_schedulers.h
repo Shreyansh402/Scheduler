@@ -16,6 +16,7 @@
 #define MAX_COMMANDS 64
 #define HASH_MAP_SIZE 100
 #define HEAP_SIZE 100
+#define POLLING_INTERVAL 100
 
 typedef struct
 {
@@ -521,9 +522,6 @@ void ShortestJobFirst()
 {
     // Shortest Job First Scheduling Algorithm
 
-    // Set up signal handlers
-    signal(SIGALRM, handle_alarm);
-
     // Set stdin to non-blocking mode
     setNonBlockingInput();
 
@@ -552,18 +550,18 @@ void ShortestJobFirst()
         }
         if (p.size > 0)
         {
-            Process currentProcess = *removeHeap(&p);
+            Process *currentProcess = removeHeap(&p);
             clock_gettime(CLOCK_MONOTONIC, &time);
-            currentProcess.start_time = time.tv_sec * 1000 + time.tv_nsec / 1000000;
-            if (currentProcess.timeed == false)
+            currentProcess->start_time = time.tv_sec * 1000 + time.tv_nsec / 1000000;
+            if (currentProcess->timeed == false)
             {
-                currentProcess.response_time = currentProcess.start_time - currentProcess.arrival_time;
-                currentProcess.timeed = true;
-                currentProcess.waiting_time = currentProcess.response_time;
+                currentProcess->response_time = currentProcess->start_time - currentProcess->arrival_time;
+                currentProcess->timeed = true;
+                currentProcess->waiting_time = currentProcess->response_time;
             }
             else
             {
-                currentProcess.waiting_time += currentProcess.start_time - currentProcess.completion_time;
+                currentProcess->waiting_time += currentProcess->start_time - currentProcess->completion_time;
             }
 
             pid_t pid = fork();
@@ -571,7 +569,7 @@ void ShortestJobFirst()
             {
                 // tokenizing the command
                 char *args[100];
-                char *command_copy = strdup(currentProcess.command);
+                char *command_copy = strdup(currentProcess->command);
                 char *token = strtok(command_copy, " ");
                 int j = 0;
                 while (token != NULL)
@@ -586,39 +584,229 @@ void ShortestJobFirst()
             }
             else if (pid > 0)
             {
-                currentProcess.pid = pid;
+                currentProcess->pid = pid;
                 // Waiting for the process to complete
                 int status;
-                waitpid(currentProcess.pid, &status, 0);
+                waitpid(currentProcess->pid, &status, 0);
 
                 clock_gettime(CLOCK_MONOTONIC, &time);
-                currentProcess.completion_time = time.tv_sec * 1000 + time.tv_nsec / 1000000;
-                currentProcess.burst_time += currentProcess.completion_time - currentProcess.start_time;
-                currentProcess.turnaround_time = currentProcess.completion_time - currentProcess.arrival_time;
+                currentProcess->completion_time = time.tv_sec * 1000 + time.tv_nsec / 1000000;
+                currentProcess->burst_time += currentProcess->completion_time - currentProcess->start_time;
+                currentProcess->turnaround_time = currentProcess->completion_time - currentProcess->arrival_time;
                 if (WEXITSTATUS(status))
                 {
                     // Process did not complete successfully
-                    currentProcess.error = true;
-                    currentProcess.finished = false;
+                    currentProcess->error = true;
+                    currentProcess->finished = false;
                 }
                 else
                 {
                     // Process completed successfully
-                    currentProcess.finished = true;
-                    currentProcess.error = false;
-                    insertHashMap(&map, currentProcess.command, currentProcess.burst_time);
+                    currentProcess->finished = true;
+                    currentProcess->error = false;
+                    insertHashMap(&map, currentProcess->command, currentProcess->burst_time);
                 }
 
                 //<Command>|<Start Time of the context>|<End Time of the context>
-                printf("%s|%llu|%llu\n", currentProcess.command, currentProcess.start_time - init_time, currentProcess.completion_time - init_time);
+                printf("%s|%llu|%llu\n", currentProcess->command, currentProcess->start_time - init_time, currentProcess->completion_time - init_time);
                 // Write in CSV file with finished and error as 'Yes' or 'No'
                 FILE *f = fopen("result_online_SJF.csv", "a");
-                fprintf(f, "%s,%s,%s,%llu,%llu,%llu,%llu\n", currentProcess.command, currentProcess.finished ? "Yes" : "No", currentProcess.error ? "Yes" : "No", currentProcess.burst_time, currentProcess.turnaround_time, currentProcess.waiting_time, currentProcess.response_time);
+                fprintf(f, "%s,%s,%s,%llu,%llu,%llu,%llu\n", currentProcess->command, currentProcess->finished ? "Yes" : "No", currentProcess->error ? "Yes" : "No", currentProcess->burst_time, currentProcess->turnaround_time, currentProcess->waiting_time, currentProcess->response_time);
                 fclose(f);
+                free(currentProcess);
             }
             else
             {
                 printf("Error in forking the process\n");
+            }
+        }
+    }
+    free(p.heap);
+    free(map.buckets);
+    return;
+}
+
+void ShortestRemainingTimeFirst()
+{
+    // Shortest Remaining Time First Scheduling Algorithm
+
+    // Set up signal handlers
+    signal(SIGALRM, handle_alarm);
+
+    // Set stdin to non-blocking mode
+    setNonBlockingInput();
+
+    // Setting the timer
+    struct itimerval timer;
+    timer.it_value.tv_sec = POLLING_INTERVAL / 1000;
+    timer.it_value.tv_usec = (POLLING_INTERVAL % 1000) * 1000;
+    timer.it_interval.tv_sec = 0;
+    timer.it_interval.tv_usec = 0;
+
+    struct itimerval zero_timer;
+    zero_timer.it_value.tv_sec = 0;
+    zero_timer.it_value.tv_usec = 0;
+    zero_timer.it_interval.tv_sec = 0;
+    zero_timer.it_interval.tv_usec = 0;
+
+    // Creating the CSV file
+    FILE *f = fopen("result_online_SRTF.csv", "w");
+    fprintf(f, "Command,Finished,Error,Burst Time in milliseconds,Turnaround Time in milliseconds,Waiting Time in milliseconds,Response Time in milliseconds\n");
+    fclose(f);
+
+    // Initialize the Heap
+    Heap p;
+    initHeap(&p);
+
+    // Initialize the HashMap
+    HashMap map;
+    initHashMap(&map);
+
+    struct timespec time;
+    clock_gettime(CLOCK_MONOTONIC, &time);
+    uint64_t init_time = time.tv_sec * 1000 + time.tv_nsec / 1000000;
+    bool flag = true;
+    Process *currentProcess;
+
+    while (1)
+    {
+
+        if (flag && checkForInput(&p, &map))
+        {
+            continue;
+        }
+        if (!flag || p.size > 0)
+        {
+            if (flag)
+            {
+                currentProcess = removeHeap(&p);
+            }
+            clock_gettime(CLOCK_MONOTONIC, &time);
+            currentProcess->start_time = time.tv_sec * 1000 + time.tv_nsec / 1000000;
+            if (currentProcess->timeed == false)
+            {
+                currentProcess->response_time = currentProcess->start_time - currentProcess->arrival_time;
+                currentProcess->timeed = true;
+                currentProcess->waiting_time = currentProcess->response_time;
+            }
+            else
+            {
+                currentProcess->waiting_time += currentProcess->start_time - currentProcess->completion_time;
+            }
+            if (currentProcess->pid != -1)
+            {
+                kill(currentProcess->pid, SIGCONT);
+            }
+            else
+            {
+
+                pid_t pid = fork();
+                if (pid == 0)
+                {
+                    // tokenizing the command
+                    char *args[100];
+                    char *command_copy = strdup(currentProcess->command);
+                    char *token = strtok(command_copy, " ");
+                    int j = 0;
+                    while (token != NULL)
+                    {
+                        args[j++] = strdup(token);
+                        token = strtok(NULL, " ");
+                    }
+                    args[j] = NULL;
+                    free(command_copy);
+                    execvp(args[0], args);
+                    exit(1);
+                }
+                else if (pid > 0)
+                {
+                    currentProcess->pid = pid;
+                }
+                else
+                {
+                    printf("Error in forking the process\n");
+                }
+            }
+            current_pid = currentProcess->pid;
+
+            // Setting the timer
+            setitimer(ITIMER_REAL, &timer, NULL);
+
+            // Waiting for the process to complete
+            int status;
+            waitpid(currentProcess->pid, &status, WUNTRACED);
+
+            // Disabling the timer
+            setitimer(ITIMER_REAL, &zero_timer, NULL);
+
+            current_pid = -1;
+
+            clock_gettime(CLOCK_MONOTONIC, &time);
+            currentProcess->completion_time = time.tv_sec * 1000 + time.tv_nsec / 1000000;
+            currentProcess->burst_time += currentProcess->completion_time - currentProcess->start_time;
+
+            if (WIFSTOPPED(status))
+            {
+                // Process stopped due to alarm
+                if (currentProcess->expected_burst_time < currentProcess->completion_time - currentProcess->start_time)
+                {
+                    currentProcess->expected_burst_time = 0;
+                }
+                else
+                {
+                    currentProcess->expected_burst_time -= currentProcess->completion_time - currentProcess->start_time;
+                }
+                if (checkForInput(&p, &map))
+                {
+                    flag = true;
+                    //<Command>|<Start Time of the context>|<End Time of the context>
+                    printf("%s|%llu|%llu\n", currentProcess->command, currentProcess->start_time - init_time, currentProcess->completion_time - init_time);
+
+                    insertHeap(&p, currentProcess);
+                }
+                else
+                {
+                    flag = false;
+                }
+            }
+            else
+            {
+                // Process Exited
+                flag = true;
+                currentProcess->turnaround_time = currentProcess->completion_time - currentProcess->arrival_time;
+                if (WEXITSTATUS(status))
+                {
+                    // Process did not complete successfully
+                    currentProcess->error = true;
+                    currentProcess->finished = false;
+                }
+                else
+                {
+                    // Process completed successfully
+                    currentProcess->finished = true;
+                    currentProcess->error = false;
+                    insertHashMap(&map, currentProcess->command, currentProcess->burst_time);
+
+                    // update the expected burst time of processes in the heap
+                    uint64_t avg_burst_time = getAverageBurstTime(&map, currentProcess->command);
+                    for (int i = 0; i < p.size; i++)
+                    {
+                        if (strcmp(p.heap[i]->command, currentProcess->command) == 0)
+                        {
+                            p.heap[i]->expected_burst_time = avg_burst_time;
+                        }
+                    }
+                }
+
+                // Write in CSV file with finished and error as 'Yes' or 'No'
+                FILE *f = fopen("result_online_SRTF.csv", "a");
+                fprintf(f, "%s,%s,%s,%llu,%llu,%llu,%llu\n", currentProcess->command, currentProcess->finished ? "Yes" : "No", currentProcess->error ? "Yes" : "No", currentProcess->burst_time, currentProcess->turnaround_time, currentProcess->waiting_time, currentProcess->response_time);
+                fclose(f);
+
+                //<Command>|<Start Time of the context>|<End Time of the context>
+                printf("%s|%llu|%llu\n", currentProcess->command, currentProcess->start_time - init_time, currentProcess->completion_time - init_time);
+
+                free(currentProcess);
             }
         }
     }

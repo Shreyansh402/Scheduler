@@ -475,17 +475,14 @@ void MultiLevelFeedbackQueue(Process p[], int n, int quantum0, int quantum1, int
     {
         if (priority_count[0])
         {
-            printf("Priority 0\n");
             processing(p, &n, &finished_processes, priority_count, 0, quantum0, quantum1, quantum2, &timer0, &zero_timer, &prev_boost_time, boostTime, init_time);
         }
         else if (priority_count[1])
         {
-            printf("Priority 1\n");
             processing(p, &n, &finished_processes, priority_count, 1, quantum0, quantum1, quantum2, &timer1, &zero_timer, &prev_boost_time, boostTime, init_time);
         }
         else if (priority_count[2])
         {
-            printf("Priority 2\n");
             processing(p, &n, &finished_processes, priority_count, 2, quantum0, quantum1, quantum2, &timer2, &zero_timer, &prev_boost_time, boostTime, init_time);
         }
         else

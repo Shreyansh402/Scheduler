@@ -31,7 +31,8 @@ int main()
     // MultiLevelFeedbackQueue(p, 10, 100, 500, 1000, 5000);
 
     // MultiLevelFeedbackQueue(10, 500, 1000, 10000);
-    ShortestJobFirst();
+    // ShortestJobFirst();
+    ShortestRemainingTimeFirst();
 
     return 0;
 }
