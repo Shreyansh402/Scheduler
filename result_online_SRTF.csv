@@ -1,8 +1,5 @@
-Command,Finished,Error,Burst Time in milliseconds,Turnaround Time in milliseconds,Waiting Time in milliseconds,Response Time in milliseconds
-fasdg,No,Yes,3,3,0,0
-./b.out,Yes,No,9399,9400,1,1
-ls,Yes,No,2,8158,8156,8156
-ls,Yes,No,2,2,0,0
-echo,Yes,No,3,3,0,0
-./b.out,Yes,No,9453,9459,6,1
-./e.out,Yes,No,283,352,69,69
+Command,Finished,Error,Burst Time,Turnaround Time,Waiting Time,Response Time
+ls,Yes,No,1,1,0,0
+./b.out,Yes,No,9396,9396,0,0
+ls,Yes,No,1,1,0,0
+./b.out,Yes,No,9459,9461,2,0

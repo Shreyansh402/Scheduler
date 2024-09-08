@@ -187,7 +187,7 @@ void FCFS(Process p[], int n)
 
     // Creating the CSV file
     FILE *f = fopen("result_offline_FCFS.csv", "w");
-    fprintf(f, "Command,Finished,Error,Burst Time in milliseconds,Turnaround Time in milliseconds,Waiting Time in milliseconds,Response Time in milliseconds\n");
+    fprintf(f, "Command,Finished,Error,Burst Time,Turnaround Time,Waiting Time,Response Time\n");
     fclose(f);
 
     struct timespec time;
@@ -282,7 +282,7 @@ void RoundRobin(Process p[], int n, int quantum)
 
     // Creating the CSV file
     FILE *f = fopen("result_offline_RR.csv", "w");
-    fprintf(f, "Command,Finished,Error,Burst Time in milliseconds,Turnaround Time in milliseconds,Waiting Time in milliseconds,Response Time in milliseconds\n");
+    fprintf(f, "Command,Finished,Error,Burst Time,Turnaround Time,Waiting Time,Response Time\n");
     fclose(f);
 
     for (int i = 0; i < n; i++)
@@ -446,7 +446,7 @@ void MultiLevelFeedbackQueue(Process p[], int n, int quantum0, int quantum1, int
 
     // Creating the CSV file
     FILE *f = fopen("result_offline_MLFQ.csv", "w");
-    fprintf(f, "Command,Finished,Error,Burst Time in milliseconds,Turnaround Time in milliseconds,Waiting Time in milliseconds,Response Time in milliseconds\n");
+    fprintf(f, "Command,Finished,Error,Burst Time,Turnaround Time,Waiting Time,Response Time\n");
     fclose(f);
 
     for (int i = 0; i < n; i++)

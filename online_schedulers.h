@@ -481,7 +481,7 @@ void MultiLevelFeedbackQueue(int quantum0, int quantum1, int quantum2, int boost
 
     // Creating the CSV file
     FILE *f = fopen("result_online_MLFQ.csv", "w");
-    fprintf(f, "Command,Finished,Error,Burst Time in milliseconds,Turnaround Time in milliseconds,Waiting Time in milliseconds,Response Time in milliseconds\n");
+    fprintf(f, "Command,Finished,Error,Burst Time,Turnaround Time,Waiting Time,Response Time\n");
     fclose(f);
 
     int priority_count[3] = {0, 0, 0};
@@ -527,7 +527,7 @@ void ShortestJobFirst()
 
     // Creating the CSV file
     FILE *f = fopen("result_online_SJF.csv", "w");
-    fprintf(f, "Command,Finished,Error,Burst Time in milliseconds,Turnaround Time in milliseconds,Waiting Time in milliseconds,Response Time in milliseconds\n");
+    fprintf(f, "Command,Finished,Error,Burst Time,Turnaround Time,Waiting Time,Response Time\n");
     fclose(f);
 
     // Initialize the Heap
@@ -651,7 +651,7 @@ void ShortestRemainingTimeFirst()
 
     // Creating the CSV file
     FILE *f = fopen("result_online_SRTF.csv", "w");
-    fprintf(f, "Command,Finished,Error,Burst Time in milliseconds,Turnaround Time in milliseconds,Waiting Time in milliseconds,Response Time in milliseconds\n");
+    fprintf(f, "Command,Finished,Error,Burst Time,Turnaround Time,Waiting Time,Response Time\n");
     fclose(f);
 
     // Initialize the Heap
